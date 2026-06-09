@@ -3,9 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-
 # OS metadata files
 .DS_Store
 .DS_Store?
@@ -24,10 +21,5 @@ Thumbs.db
 ~$*.xlsx
 ~$*.xls
 
-# Raw data directories
-Believe Music/
-TME/
-TME_others/
 
-# Exclude patterns
-*bill_outside_*
+
