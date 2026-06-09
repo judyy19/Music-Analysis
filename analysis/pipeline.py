@@ -9,8 +9,14 @@ from config import BASE_PATH, STANDARD_SCHEMA, PLATFORM_MAP
 from utils import read_excel_auto_schema, clean_upc
 
 def get_file_list(base_path: str = BASE_PATH) -> List[str]:
-    """Retrieve all Excel files recursively from the base path."""
-    return glob.glob(os.path.join(base_path, "**/*.xlsx"), recursive=True)
+    """Retrieve all Excel files recursively from the base path, excluding 'bill' and temp lock files."""
+    all_files = glob.glob(os.path.join(base_path, "**/*.xlsx"), recursive=True)
+    return [
+        f for f in all_files 
+        if not os.path.basename(f).lower().startswith('bill') 
+        and not os.path.basename(f).startswith('~$')
+    ]
+
 
 def calculate_clicks(df: pd.DataFrame, filename: str) -> pd.DataFrame:
     """Calculate the total clicks depending on file prefix flow."""
@@ -45,10 +51,20 @@ def calculate_clicks(df: pd.DataFrame, filename: str) -> pd.DataFrame:
             df.drop(columns=available_cols, inplace=True, errors='ignore')
         else:
             df['Total_Clicks'] = 0.0
-            
+    
     elif filename_lower.startswith('song'):
         # Song clicks
         click_cols = ['Song_Free_Normal', 'Song_Free_NonNormal', 'Song_Sub_Basic', 'Song_Sub_Senior', 'Song_MuCoin']
+        available_cols = [c for c in click_cols if c in df.columns]
+        if available_cols:
+            df['Total_Clicks'] = df[available_cols].sum(axis=1)
+            df.drop(columns=available_cols, inplace=True, errors='ignore')
+        else:
+            df['Total_Clicks'] = 0.0
+            
+    elif filename_lower.startswith('mv'):
+        # MV clicks
+        click_cols = ['MV_Comp']
         available_cols = [c for c in click_cols if c in df.columns]
         if available_cols:
             df['Total_Clicks'] = df[available_cols].sum(axis=1)
@@ -80,6 +96,11 @@ def run_etl_pipeline(base_path: str = BASE_PATH) -> pd.DataFrame:
             if 'UPC' in temp_df.columns:
                 temp_df['UPC'] = temp_df['UPC'].apply(clean_upc)
             
+            # Resolve column mapping conflict: Song files using "广告收入分成-使用量" will map to Aiting_Free initially; rename to Song_Free_Normal
+            filename_lower = filename.lower()
+            if filename_lower.startswith('song') and 'Aiting_Free' in temp_df.columns:
+                temp_df = temp_df.rename(columns={'Aiting_Free': 'Song_Free_Normal'})
+
             # 3. Calculate Clicks
             temp_df = calculate_clicks(temp_df, filename)
             
@@ -113,21 +134,43 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
     if 'Platform' in df_cleaned.columns:
         df_cleaned['Platform'] = df_cleaned['Platform'].replace(PLATFORM_MAP)
         
+    # Ensure Song names are string types and clean trailing '.0' (caused by Excel numeric cell parsing)
+    # if 'Song' in df_cleaned.columns:
+    #     df_cleaned['Song'] = df_cleaned['Song'].apply(
+    #         lambda x: str(int(x)) if isinstance(x, float) and x.is_integer()
+    #                   else (str(x).strip() if pd.notna(x) else x)
+    #     )
+        
+    # Fill missing ISRC with "Song - Artist"
+    if 'ISRC' in df_cleaned.columns and 'Song' in df_cleaned.columns and 'Artist' in df_cleaned.columns:
+        isrc_fill = df_cleaned['Song'].fillna('UnknownSong').astype(str) + " - " + df_cleaned['Artist'].fillna('UnknownArtist').astype(str)
+        df_cleaned['ISRC'] = df_cleaned['ISRC'].fillna(isrc_fill)
+        df_cleaned.loc[df_cleaned['ISRC'].astype(str).str.strip() == '', 'ISRC'] = isrc_fill
+        
     # 3. Standardize metadata (Resolve multiple names per ISRC / UPC)
     # Standardize Song Names (first occurrence per ISRC)
-    if 'ISRC' in df_cleaned.columns and 'Song' in df_cleaned.columns:
-        standard_songs = df_cleaned.groupby('ISRC')['Song'].agg('first')
-        df_cleaned['standard_song'] = df_cleaned['ISRC'].map(standard_songs).str.slice(0, 10)
-        
+    df_cleaned['standard_song'] = df_cleaned['Song']
+    # if 'ISRC' in df_cleaned.columns and 'Song' in df_cleaned.columns:
+    #     standard_songs = df_cleaned.groupby('ISRC')['Song'].agg('first')
+    #     df_cleaned['standard_song'] = df_cleaned['ISRC'].map(standard_songs).fillna(df_cleaned['Song'])
+    # else:
+    #     df_cleaned['standard_song'] = df_cleaned['Song']
+
     # Standardize Artist Names (first occurrence per UPC)
-    if 'UPC' in df_cleaned.columns and 'Artist' in df_cleaned.columns:
-        standard_artists = df_cleaned.groupby('UPC')['Artist'].agg('first')
-        df_cleaned['standard_artist'] = df_cleaned['UPC'].map(standard_artists)
+    # if 'UPC' in df_cleaned.columns and 'Artist' in df_cleaned.columns:
+    #     standard_artists = df_cleaned.groupby('UPC')['Artist'].agg('first')
+    #     df_cleaned['standard_artist'] = df_cleaned['UPC'].map(standard_artists)
+    if 'Artist' in df_cleaned.columns:
+        df_cleaned['standard_artist'] = df_cleaned['Artist']
         
     # 4. Exclude Taiwan songs (ISRC starting with 'TW') and drop empty ISRC
+    # if 'ISRC' in df_cleaned.columns:
+    #     df_cleaned = df_cleaned[~df_cleaned['ISRC'].str.startswith('TW', na=False)]
+    #     df_cleaned = df_cleaned.dropna(subset=['ISRC'])
+
+    # Capitalize all the letters of ISRC
     if 'ISRC' in df_cleaned.columns:
-        df_cleaned = df_cleaned[~df_cleaned['ISRC'].str.startswith('TW', na=False)]
-        df_cleaned = df_cleaned.dropna(subset=['ISRC'])
+        df_cleaned['ISRC'] = df_cleaned['ISRC'].str.upper()
         
     if 'YearMonth' in df_cleaned.columns:
         df_cleaned.sort_values('YearMonth', inplace=True)
