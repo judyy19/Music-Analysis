@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS metadata files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Data files (Recommended to exclude since they contain raw/sensitive revenue data and are large)
+*.xlsx
+*.xls
+*.csv
+
+# Excel temporary/lock files
+~$*.xlsx
+~$*.xls
+
+# Raw data directories
+Believe Music/
+TME/
+TME_others/
+
+# Exclude patterns
+*bill_outside_*
