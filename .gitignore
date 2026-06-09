@@ -21,5 +21,10 @@ Thumbs.db
 ~$*.xlsx
 ~$*.xls
 
+# Exclude zip/rar archives (raw database zips)
+*.zip
+*.rar
+
+
 
 

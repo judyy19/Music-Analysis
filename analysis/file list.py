@@ -3,8 +3,8 @@ import glob
 import pandas as pd
 
 # 1. 設定要搜尋的根目錄
-base_path = "/Users/chu-chun/Mirror/Eva/input/sony_TME/"
-output_path = "/Users/chu-chun/Mirror/Eva/output/xlsx_file_list.xlsx"
+base_path = "/Users/chu-chun/Mirror/Eva/input/sony_網易/"
+output_path = "/Users/chu-chun/Mirror/Eva/output/file_list_網易.xlsx"
 
 # 2. 遞迴搜尋該目錄下所有的 .xlsx 檔案
 all_files = glob.glob(os.path.join(base_path, "**/*.xlsx"), recursive=True)
