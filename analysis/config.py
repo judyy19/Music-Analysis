@@ -4,9 +4,10 @@ Configuration settings and constants for the TME Music Analysis pipeline.
 import os
 
 # Base paths
-BASE_PATH = "/Users/chu-chun/Mirror/Eva/TME/"
-OUTPUT_SONG_REPORT_PATH = "TME_Song_Report_202401_202603.xlsx"
-OUTPUT_ALBUM_REPORT_PATH = "TME_Album_Revenue_Report_202306_202603.xlsx"
+BASE_PATH = "/Users/chu-chun/Mirror/Eva/input/TME/"
+OUTPUT_SONG_REPORT_PATH = "../output/TME_Song_Report_202401_202603.xlsx"
+OUTPUT_ALBUM_REPORT_PATH = "../output/TME_Album_Revenue_Report_202306_202603.xlsx"
+
 
 # Analysis parameters
 START_MONTH = "2024-01"
