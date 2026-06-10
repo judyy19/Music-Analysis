@@ -4,9 +4,9 @@ Configuration settings and constants for the TME Music Analysis pipeline.
 import os
 
 # Base paths
-BASE_PATH = "/Users/chu-chun/Mirror/Eva/input/sony_TME/大曲庫/"
-OUTPUT_SONG_REPORT_PATH = "../output/TME_Song_Report_for_Sony_大曲库.xlsx"
-OUTPUT_SONG_REPORT_PATH_MONTHLY = "../output/TME_Song_Report_Monthly_for_Sony_大曲庫.xlsx"
+BASE_PATH = "/Users/chu-chun/Mirror/Eva/input/sony_TME/"
+OUTPUT_SONG_REPORT_PATH = "../output/TME_Song_Report_for_Sony_all.xlsx"
+OUTPUT_SONG_REPORT_PATH_MONTHLY = "../output/TME_Song_Report_Monthly_for_Sony_all.xlsx"
 OUTPUT_ALBUM_REPORT_PATH = "../output/TME_Album_Revenue_Report_for_Sony.xlsx"
 
 
