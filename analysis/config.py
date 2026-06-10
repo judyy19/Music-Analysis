@@ -4,9 +4,10 @@ Configuration settings and constants for the TME Music Analysis pipeline.
 import os
 
 # Base paths
-BASE_PATH = "/Users/chu-chun/Mirror/Eva/input/sony_TME/"
-OUTPUT_SONG_REPORT_PATH = "../output/TME_Song_Report_for_Sony_all.xlsx"
-OUTPUT_SONG_REPORT_PATH_MONTHLY = "../output/TME_Song_Report_Monthly_for_Sony_all.xlsx"
+# BASE_PATH = "/Users/chu-chun/Mirror/Eva/test/"
+BASE_PATH = "/Users/chu-chun/Mirror/Eva/input/sony_TME/大曲庫/"
+OUTPUT_SONG_REPORT_PATH = "../output/TME_Song_Report_for_Sony_大曲庫.xlsx"
+OUTPUT_SONG_REPORT_PATH_MONTHLY = "../output/TME_Song_Report_Monthly_for_Sony_test.xlsx"
 OUTPUT_ALBUM_REPORT_PATH = "../output/TME_Album_Revenue_Report_for_Sony.xlsx"
 
 
@@ -63,7 +64,7 @@ PLATFORM_MAP = {
     '酷狗': 'Kugou',
     '酷我': 'Kuwo',
     '酷狗音乐': 'Kugou',
-    '酷我音乐 ': 'Kuwo',
+    '酷我音乐': 'Kuwo',
     '酷狗K歌': 'KugouKaraoke',
     '酷狗直播': 'KugouLive',
     '全民K歌': 'Wesing',
@@ -75,4 +76,26 @@ PLATFORM_MAP = {
 PLOT_STYLE = {
     "font_sans": ['Arial Unicode MS'], # Support Chinese on Mac
     "figure_dpi": 100,
+}
+
+# Artist alias mapping table (Keys should be uppercase and without whitespace for matching)
+ARTIST_ALIAS_MAP = {
+    '黄安祖': ['黄安祖', '安祖ANTZU'],
+    '蔡黄汝': ['蔡黄汝', '蔡黃汝'],
+    '王彩桦': ['王彩桦', '王彩樺'],
+    '不才': ['不才', '蔡明希-不才'],
+    '刘凡': ['刘凡', '刘凡FANCY'],
+    '張萱妍': ['張萱妍', '张萱妍'],
+    'AKB48TEAMTP': ['AKB48TEAMTP', 'AKB48'],
+    '金大为': ['DK金大为', '金大为'],
+    'THEPUZZLE5,KOHA': ['THEPUZZLE5,KOHA', 'THEPUZZLE5'],
+    '云の泣': ['云の泣', '云之泣'],
+    '吉克隽逸,장혁,朴宰范(JAYPARK)': ['吉克隽逸,장혁,朴宰范(JAYPARK)', '吉克隽逸,장혁,박재범'],
+    '吉克隽逸,杭盖乐队': ['吉克隽逸,杭盖乐队', '吉克隽逸'],
+    '郭京飞,안칠현,金圣洙': ['郭京飞,안칠현,金圣洙', '郭京飞,安七炫,金圣洙'],
+    '顾晓宇,代轩齐': ['顾晓宇,代轩齐', '代轩齐,顾晓宇'],
+    '黄昺翔SEANHUANG': ['黄昺翔SEANHUANG', '黄昺翔SEANH.', '黃昺翔'],
+    '龙飞龙泽1983组合,刘彦英': ['龙飞龙泽1983组合,刘彦英', '龙飞龙泽,刘彦英'],
+    'SHILAAMZAH,五洲唱响乐团': ['SHILAAMZAH,五洲唱响乐团', '茜拉(SHILAAMZAH),五洲唱响乐团', 'SHILAAMZAH,平安', 'SHILAAMZAH', '茜拉(SHILAAMZAH)', '茜拉(SHILAAMZAH),平安', '五洲唱响乐团, 茜拉 (Shila Amzah)'],
+    '方泂鑌': ['方烱彬', '方泂鑌', '方炯鑌']
 }

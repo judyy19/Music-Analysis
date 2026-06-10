@@ -3,9 +3,10 @@ Data ETL Pipeline for reading, cleaning, and preprocessing TME raw files.
 """
 import os
 import glob
+import re
 import pandas as pd
 from typing import List
-from config import BASE_PATH, STANDARD_SCHEMA, PLATFORM_MAP, EXCLUDE_FILE_NAME
+from config import BASE_PATH, STANDARD_SCHEMA, PLATFORM_MAP, EXCLUDE_FILE_NAME, ARTIST_ALIAS_MAP
 from utils import read_excel_auto_schema, clean_upc
 
 def get_file_list(base_path: str = BASE_PATH) -> List[str]:
@@ -117,6 +118,67 @@ def run_etl_pipeline(base_path: str = BASE_PATH) -> pd.DataFrame:
     df_raw = pd.concat(all_data, ignore_index=True)
     return df_raw
 
+def standardize_artist_string(artist_val) -> str:
+    # Convert numeric values like 5566 or 5566.0 to '5566' string first
+    if isinstance(artist_val, (int, float)) and not pd.isna(artist_val):
+        if float(artist_val).is_integer():
+            artist_str = str(int(artist_val))
+        else:
+            artist_str = str(artist_val)
+    elif pd.isna(artist_val):
+        return 'UNKNOWNARTIST'
+    else:
+        artist_str = str(artist_val).strip()
+
+    if not artist_str or artist_str.lower() == 'nan':
+        return 'UNKNOWNARTIST'
+
+    # Check the whole string first (for names containing commas like '吉克隽逸,장혁,朴宰范(JAYPARK)')
+    whole_key = artist_str.replace(' ', '').upper()
+    for std_name, alias_list in ARTIST_ALIAS_MAP.items():
+        std_clean = std_name.replace(' ', '').upper()
+        if whole_key == std_clean:
+            return std_name
+        if isinstance(alias_list, str):
+            alias_list = [alias_list]
+        cleaned_aliases = [a.replace(' ', '').upper() for a in alias_list]
+        if whole_key in cleaned_aliases:
+            return std_name
+
+    # 1. Split by English comma ',' or Chinese comma '，'
+    parts = re.split(r',|，', artist_str)
+    
+    standardized_parts = []
+    for part in parts:
+        part_clean = part.strip()
+        if not part_clean:
+            continue
+        # Convert key to uppercase and remove spaces for dictionary lookup
+        lookup_key = part_clean.replace(' ', '').upper()
+        # Find if lookup_key matches standard name or any of its aliases
+        mapped_name = part_clean
+        for std_name, alias_list in ARTIST_ALIAS_MAP.items():
+            std_clean = std_name.replace(' ', '').upper()
+            if lookup_key == std_clean:
+                mapped_name = std_name
+                break
+            # Handle if alias_list is a string or list/iterable
+            if isinstance(alias_list, str):
+                alias_list = [alias_list]
+            cleaned_aliases = [a.replace(' ', '').upper() for a in alias_list]
+            if lookup_key in cleaned_aliases:
+                mapped_name = std_name
+                break
+        standardized_parts.append(mapped_name)
+        
+    # 2. Deduplicate and sort alphabetically (to ensure order independent matching)
+    unique_parts = sorted(list(set(standardized_parts)))
+    
+    # 3. Join back
+    if not unique_parts:
+        return 'UNKNOWNARTIST'
+    return ', '.join(unique_parts)
+
 def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
     """Apply cleaning rules: clean dates, map platform, standardize song/artist metadata."""
     if df.empty:
@@ -158,17 +220,18 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
     #     df_cleaned['standard_artist'] = df_cleaned['UPC'].map(standard_artists)
     # df_cleaned['standard_artist'] = df_cleaned['Artist']
 
-    # TODO: implement artist mapping table
-    # Clean and standardize artist: remove spaces, convert to uppercase, handle NaN/blank/'NA'
-    temp_artist = df_cleaned['Artist'].fillna('UNKNOWNARTIST').astype(str).str.replace(r'\s+', '', regex=True).str.upper()
-    df_cleaned['standard_artist'] = temp_artist.replace(['nan'], 'UNKNOWNARTIST')
+    # Clean and standardize artist using map dictionary, sorting, and deduplication
+    if 'Artist' in df_cleaned.columns:
+        df_cleaned['standard_artist'] = df_cleaned['Artist'].apply(standardize_artist_string)
+    else:
+        df_cleaned['standard_artist'] = 'UNKNOWNARTIST'
     # keep 'Artist' column original without any modification
 
 
     # Fill missing ISRC with "Song-Artist" (no spaces, uppercase)
     if 'ISRC' in df_cleaned.columns and 'Song' in df_cleaned.columns and 'Artist' in df_cleaned.columns:
         song_cleaned = df_cleaned['Song'].fillna('UNKNOWNSONG').astype(str).str.replace(r'\s+', '', regex=True).str.upper()
-        artist_cleaned = df_cleaned['Artist'].fillna('UNKNOWNARTIST').astype(str).str.replace(r'\s+', '', regex=True).str.upper()
+        artist_cleaned = df_cleaned['standard_artist'].fillna('UNKNOWNARTIST').astype(str).str.replace(r'\s+', '', regex=True).str.upper()
         isrc_fill = song_cleaned + " - " + artist_cleaned
         df_cleaned['ISRC'] = df_cleaned['ISRC'].fillna(isrc_fill)
         df_cleaned.loc[df_cleaned['ISRC'].astype(str).str.strip() == '', 'ISRC'] = isrc_fill
