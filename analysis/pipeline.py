@@ -142,15 +142,10 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
                       else (str(x).strip() if pd.notna(x) else '')
         )
         
-    # Fill missing ISRC with "Song - Artist"
-    if 'ISRC' in df_cleaned.columns and 'Song' in df_cleaned.columns and 'Artist' in df_cleaned.columns:
-        isrc_fill = df_cleaned['Song'].fillna('UnknownSong').astype(str) + " - " + df_cleaned['Artist'].fillna('UnknownArtist').astype(str)
-        df_cleaned['ISRC'] = df_cleaned['ISRC'].fillna(isrc_fill)
-        df_cleaned.loc[df_cleaned['ISRC'].astype(str).str.strip() == '', 'ISRC'] = isrc_fill
         
-    # 3. Standardize metadata (Resolve multiple names per ISRC / UPC)
+    # 3. Standardize Song and Artist (Resolve multiple names per ISRC / UPC)
     # Standardize Song Names (first occurrence per ISRC)
-    df_cleaned['standard_song'] = df_cleaned['Song']
+    df_cleaned['standard_song'] = df_cleaned['Song'].astype(str)
     # if 'ISRC' in df_cleaned.columns and 'Song' in df_cleaned.columns:
     #     standard_songs = df_cleaned.groupby('ISRC')['Song'].agg('first')
     #     df_cleaned['standard_song'] = df_cleaned['ISRC'].map(standard_songs).fillna(df_cleaned['Song'])
@@ -161,13 +156,24 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
     # if 'UPC' in df_cleaned.columns and 'Artist' in df_cleaned.columns:
     #     standard_artists = df_cleaned.groupby('UPC')['Artist'].agg('first')
     #     df_cleaned['standard_artist'] = df_cleaned['UPC'].map(standard_artists)
-    if 'Artist' in df_cleaned.columns:
-        df_cleaned['Artist'] = df_cleaned['Artist'].apply(
-            lambda x: str(int(x)) if isinstance(x, (int, float)) and not pd.isna(x) and float(x).is_integer()
-                      else (str(x).strip() if pd.notna(x) else '')
-        )
-        df_cleaned['standard_artist'] = df_cleaned['Artist']
-        
+    # df_cleaned['standard_artist'] = df_cleaned['Artist']
+
+    # TODO: implement artist mapping table
+    # Clean and standardize artist: remove spaces, convert to uppercase, handle NaN/blank/'NA'
+    temp_artist = df_cleaned['Artist'].fillna('UNKNOWNARTIST').astype(str).str.replace(r'\s+', '', regex=True).str.upper()
+    df_cleaned['standard_artist'] = temp_artist.replace(['nan'], 'UNKNOWNARTIST')
+    # keep 'Artist' column original without any modification
+
+
+    # Fill missing ISRC with "Song-Artist" (no spaces, uppercase)
+    if 'ISRC' in df_cleaned.columns and 'Song' in df_cleaned.columns and 'Artist' in df_cleaned.columns:
+        song_cleaned = df_cleaned['Song'].fillna('UNKNOWNSONG').astype(str).str.replace(r'\s+', '', regex=True).str.upper()
+        artist_cleaned = df_cleaned['Artist'].fillna('UNKNOWNARTIST').astype(str).str.replace(r'\s+', '', regex=True).str.upper()
+        isrc_fill = song_cleaned + " - " + artist_cleaned
+        df_cleaned['ISRC'] = df_cleaned['ISRC'].fillna(isrc_fill)
+        df_cleaned.loc[df_cleaned['ISRC'].astype(str).str.strip() == '', 'ISRC'] = isrc_fill
+
+
     # 4. Exclude Taiwan songs (ISRC starting with 'TW') and drop empty ISRC
     # if 'ISRC' in df_cleaned.columns:
     #     df_cleaned = df_cleaned[~df_cleaned['ISRC'].str.startswith('TW', na=False)]
