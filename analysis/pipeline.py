@@ -5,7 +5,7 @@ import os
 import glob
 import pandas as pd
 from typing import List
-from config import BASE_PATH, STANDARD_SCHEMA, PLATFORM_MAP
+from config import BASE_PATH, STANDARD_SCHEMA, PLATFORM_MAP, EXCLUDE_FILE_NAME
 from utils import read_excel_auto_schema, clean_upc
 
 def get_file_list(base_path: str = BASE_PATH) -> List[str]:
@@ -13,8 +13,9 @@ def get_file_list(base_path: str = BASE_PATH) -> List[str]:
     all_files = glob.glob(os.path.join(base_path, "**/*.xlsx"), recursive=True)
     return [
         f for f in all_files 
-        if not os.path.basename(f).lower().startswith('bill') 
-        and not os.path.basename(f).startswith('~$')
+        # if not os.path.basename(f).lower().startswith('bill') 
+        # if not any(ex in os.path.basename(f) for ex in EXCLUDE_FILE_NAME)
+        if not os.path.basename(f).startswith(tuple(EXCLUDE_FILE_NAME))
     ]
 
 
@@ -22,7 +23,7 @@ def calculate_clicks(df: pd.DataFrame, filename: str) -> pd.DataFrame:
     """Calculate the total clicks depending on file prefix flow."""
     filename_lower = filename.lower()
     
-    if filename_lower.startswith('aiting'):
+    if filename_lower.startswith('aiting') or filename_lower.startswith('爱听'):
         # Aiting clicks
         click_cols = ['Aiting_Free', 'Aiting_Sub']
         available_cols = [c for c in click_cols if c in df.columns]
@@ -32,7 +33,7 @@ def calculate_clicks(df: pd.DataFrame, filename: str) -> pd.DataFrame:
         else:
             df['Total_Clicks'] = 0.0
             
-    elif filename_lower.startswith('k_'):
+    elif filename_lower.startswith('k_') or filename_lower.startswith('k歌'):
         # K clicks
         click_cols = ['K_Lyrics', 'K_Comp', 'K_Rec_Orig', 'K_Rec_Kara_Lic', 'K_Rec_Kara_TME']
         available_cols = [c for c in click_cols if c in df.columns]
@@ -42,7 +43,7 @@ def calculate_clicks(df: pd.DataFrame, filename: str) -> pd.DataFrame:
         else:
             df['Total_Clicks'] = 0.0
             
-    elif filename_lower.startswith('single'):
+    elif filename_lower.startswith('single') or filename_lower.startswith('单曲'):
         # Single clicks
         click_cols = ['Single_IOS', 'Single_Others']
         available_cols = [c for c in click_cols if c in df.columns]
@@ -52,7 +53,7 @@ def calculate_clicks(df: pd.DataFrame, filename: str) -> pd.DataFrame:
         else:
             df['Total_Clicks'] = 0.0
     
-    elif filename_lower.startswith('song'):
+    elif filename_lower.startswith('song') or filename_lower.startswith('歌曲'):
         # Song clicks
         click_cols = ['Song_Free_Normal', 'Song_Free_NonNormal', 'Song_Sub_Basic', 'Song_Sub_Senior', 'Song_MuCoin']
         available_cols = [c for c in click_cols if c in df.columns]
@@ -98,7 +99,7 @@ def run_etl_pipeline(base_path: str = BASE_PATH) -> pd.DataFrame:
             
             # Resolve column mapping conflict: Song files using "广告收入分成-使用量" will map to Aiting_Free initially; rename to Song_Free_Normal
             filename_lower = filename.lower()
-            if filename_lower.startswith('song') and 'Aiting_Free' in temp_df.columns:
+            if (filename_lower.startswith('song') or filename_lower.startswith('歌曲')) and 'Aiting_Free' in temp_df.columns:
                 temp_df = temp_df.rename(columns={'Aiting_Free': 'Song_Free_Normal'})
 
             # 3. Calculate Clicks
