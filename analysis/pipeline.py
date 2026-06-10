@@ -136,11 +136,11 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
         df_cleaned['Platform'] = df_cleaned['Platform'].replace(PLATFORM_MAP)
         
     # Ensure Song names are string types and clean trailing '.0' (caused by Excel numeric cell parsing)
-    # if 'Song' in df_cleaned.columns:
-    #     df_cleaned['Song'] = df_cleaned['Song'].apply(
-    #         lambda x: str(int(x)) if isinstance(x, float) and x.is_integer()
-    #                   else (str(x).strip() if pd.notna(x) else x)
-    #     )
+    if 'Song' in df_cleaned.columns:
+        df_cleaned['Song'] = df_cleaned['Song'].apply(
+            lambda x: str(int(x)) if isinstance(x, (int, float)) and not pd.isna(x) and float(x).is_integer()
+                      else (str(x).strip() if pd.notna(x) else '')
+        )
         
     # Fill missing ISRC with "Song - Artist"
     if 'ISRC' in df_cleaned.columns and 'Song' in df_cleaned.columns and 'Artist' in df_cleaned.columns:
@@ -162,6 +162,10 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
     #     standard_artists = df_cleaned.groupby('UPC')['Artist'].agg('first')
     #     df_cleaned['standard_artist'] = df_cleaned['UPC'].map(standard_artists)
     if 'Artist' in df_cleaned.columns:
+        df_cleaned['Artist'] = df_cleaned['Artist'].apply(
+            lambda x: str(int(x)) if isinstance(x, (int, float)) and not pd.isna(x) and float(x).is_integer()
+                      else (str(x).strip() if pd.notna(x) else '')
+        )
         df_cleaned['standard_artist'] = df_cleaned['Artist']
         
     # 4. Exclude Taiwan songs (ISRC starting with 'TW') and drop empty ISRC
