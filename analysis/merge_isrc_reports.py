@@ -34,8 +34,8 @@ def merge_isrc_excel(input_path: str, output_path: str):
         agg_dict['song'] = 'first'
     if 'artist' in df.columns:
         # Join unique artists alphabetically
-        # agg_dict['artist'] = lambda x: ', '.join(sorted(list(set(x.dropna().astype(str).str.strip()))))
-        agg_dict['artist'] = 'first'
+        agg_dict['artist'] = lambda x: ', '.join(sorted(list(set(x.dropna().astype(str).str.strip()))))
+        # agg_dict['artist'] = 'first'
     if 'album' in df.columns:
         agg_dict['album'] = 'first'
     if 'UPC' in df.columns:
@@ -74,8 +74,8 @@ if __name__ == "__main__":
     else:
         # Default paths relative to script location
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        in_path = os.path.abspath(os.path.join(script_dir, "../output/TME_Song_Report_for_Sony_all.xlsx"))
-        out_path = os.path.abspath(os.path.join(script_dir, "../output/TME_Song_Report_for_Sony_merged.xlsx"))
+        in_path = os.path.abspath(os.path.join(script_dir, "../output/TME_Song_Report_for_Sony_大曲庫_new.xlsx"))
+        out_path = os.path.abspath(os.path.join(script_dir, "../output/TME_Song_Report_for_Sony_大曲庫_merged.xlsx"))
         
         print("Usage: python merge_isrc_reports.py <input_excel_path> <output_excel_path>")
         print(f"Using default paths:\nInput:  {in_path}\nOutput: {out_path}\n")

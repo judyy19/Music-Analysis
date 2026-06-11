@@ -233,6 +233,8 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
         song_cleaned = df_cleaned['Song'].fillna('UNKNOWNSONG').astype(str).str.replace(r'\s+', '', regex=True).str.upper()
         artist_cleaned = df_cleaned['standard_artist'].fillna('UNKNOWNARTIST').astype(str).str.replace(r'\s+', '', regex=True).str.upper()
         isrc_fill = song_cleaned + " - " + artist_cleaned
+        # Strip leading/trailing whitespaces from existing ISRCs
+        df_cleaned['ISRC'] = df_cleaned['ISRC'].str.strip()
         df_cleaned['ISRC'] = df_cleaned['ISRC'].fillna(isrc_fill)
         df_cleaned.loc[df_cleaned['ISRC'].astype(str).str.strip() == '', 'ISRC'] = isrc_fill
 

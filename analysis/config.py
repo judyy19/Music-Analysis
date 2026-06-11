@@ -30,7 +30,6 @@ STANDARD_SCHEMA = {
     "Platform": ["platform", "平台", "结算平台", "结算平台ID（32=aiting）"],
     "Album": ["album", "专辑名"],
     "UPC": ["upc", "专辑UPC"],
-    "Clicks": ["clicks", "点击量"],
     
     # 1. Aiting Click/ 愛聽
     "Aiting_Free": ["free music service", "广告收入分成-使用量"],
@@ -100,3 +99,4 @@ ARTIST_ALIAS_MAP = {
     '方泂鑌': ['方烱彬', '方泂鑌', '方炯鑌'],
     'R&b' : ['R&b', 'R & B']
 }
+
