@@ -133,7 +133,7 @@ def standardize_artist_string(artist_val) -> str:
     if not artist_str or artist_str.lower() == 'nan':
         return 'UNKNOWNARTIST'
 
-    # Check the whole string first (for names containing commas like '吉克隽逸,장혁,朴宰范(JAYPARK)')
+    # Check the whole string first (for names containing multiple artist seperated by commas like '吉克隽逸,장혁,朴宰范(JAYPARK)')
     whole_key = artist_str.replace(' ', '').upper()
     for std_name, alias_list in ARTIST_ALIAS_MAP.items():
         std_clean = std_name.replace(' ', '').upper()
