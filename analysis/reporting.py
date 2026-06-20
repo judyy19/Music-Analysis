@@ -2,7 +2,125 @@
 Reporting module for TME Music data aggregation and report export.
 """
 import pandas as pd
+import os
+from openpyxl import load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
+def style_excel_file(file_path: str):
+    """Applies professional styling to an Excel workbook using openpyxl."""
+    if not os.path.exists(file_path):
+        return
+        
+    wb = load_workbook(file_path)
+    
+    # Styles config
+    font_name = "Microsoft JhengHei"
+    header_font = Font(name=font_name, size=11, bold=True, color="FFFFFF")
+    data_font = Font(name=font_name, size=10)
+    
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid") # Navy Blue
+    zebra_fill = PatternFill(start_color="F9FBFD", end_color="F9FBFD", fill_type="solid") # Very light ice-blue
+    
+    thin_border = Border(
+        left=Side(style='thin', color='E0E0E0'),
+        right=Side(style='thin', color='E0E0E0'),
+        top=Side(style='thin', color='E0E0E0'),
+        bottom=Side(style='thin', color='E0E0E0')
+    )
+    
+    align_left = Alignment(horizontal="left", vertical="center")
+    align_center = Alignment(horizontal="center", vertical="center")
+    align_right = Alignment(horizontal="right", vertical="center")
+    
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        
+        # Keep gridlines visible
+        if ws.views.sheetView:
+            ws.views.sheetView[0].showGridLines = True
+            
+        # Freeze top row
+        ws.freeze_panes = "A2"
+        
+        # Header formatting
+        ws.row_dimensions[1].height = 26
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = align_center
+            cell.border = thin_border
+            
+        # Data rows formatting
+        max_row = ws.max_row
+        max_col = ws.max_column
+        
+        # Detect column types
+        col_types = {}
+        for col_idx in range(1, max_col + 1):
+            col_name = str(ws.cell(row=1, column=col_idx).value or '').lower()
+            if 'revenue' in col_name or '分成' in col_name or 'income' in col_name:
+                col_types[col_idx] = 'currency'
+            elif 'click' in col_name or '次數' in col_name or 'count' in col_name:
+                col_types[col_idx] = 'clicks'
+            elif 'share' in col_name or 'growth' in col_name or '成長' in col_name or '比例' in col_name:
+                col_types[col_idx] = 'percentage'
+            elif any(x in col_name for x in ['isrc', 'upc', 'date', 'year', 'month', '日期', '期間']):
+                col_types[col_idx] = 'code'
+            else:
+                col_types[col_idx] = 'text'
+                
+        for r_idx in range(2, max_row + 1):
+            ws.row_dimensions[r_idx].height = 20
+            is_even = (r_idx % 2 == 0)
+            
+            for c_idx in range(1, max_col + 1):
+                cell = ws.cell(row=r_idx, column=c_idx)
+                cell.font = data_font
+                cell.border = thin_border
+                
+                if is_even:
+                    cell.fill = zebra_fill
+                    
+                c_type = col_types.get(c_idx, 'text')
+                val = cell.value
+                
+                if isinstance(val, (int, float)):
+                    if c_type == 'currency':
+                        cell.number_format = '#,##0.00'
+                        cell.alignment = align_right
+                    elif c_type == 'clicks':
+                        cell.number_format = '#,##0'
+                        cell.alignment = align_right
+                    elif c_type == 'percentage':
+                        if val > 1.0 or val < -1.0:
+                            cell.number_format = '0.00"%"'
+                        else:
+                            cell.number_format = '0.00%'
+                        cell.alignment = align_right
+                    else:
+                        cell.number_format = '#,##0'
+                        cell.alignment = align_right
+                else:
+                    if c_type == 'code':
+                        cell.alignment = align_center
+                    else:
+                        cell.alignment = align_left
+                        
+        # Auto column width
+        for col in ws.columns:
+            max_len = 0
+            col_letter = get_column_letter(col[0].column)
+            for cell in col:
+                val_str = str(cell.value or '')
+                if cell.number_format != 'General' and isinstance(cell.value, (int, float)):
+                    val_str += '    '
+                max_len = max(max_len, len(val_str))
+            ws.column_dimensions[col_letter].width = min(max(max_len + 3, 11), 45)
+            
+    wb.save(file_path)
+
+# TODO: adjust column order
 def generate_song_report(df_filtered: pd.DataFrame, output_path: str) -> pd.DataFrame:
     """Generate and save Song Revenue and Clicks report pivoted by YearMonth."""
     if df_filtered.empty:
@@ -71,6 +189,7 @@ def generate_song_report(df_filtered: pd.DataFrame, output_path: str) -> pd.Data
     
     # Export to Excel
     song_final.to_excel(output_path, index=False)
+    style_excel_file(output_path)
     print(f"Song report exported successfully to: {output_path}")
     return song_final
 
@@ -119,6 +238,7 @@ def generate_album_report(df_filtered: pd.DataFrame, output_path: str) -> pd.Dat
     
     # Export to Excel
     album_final.to_excel(output_path, index=False)
+    style_excel_file(output_path)
     print(f"Album report exported successfully to: {output_path}")
     return album_final
 
@@ -196,6 +316,7 @@ def generate_song_report_by_year(df_filtered: pd.DataFrame, output_path: str) ->
     
     # Export to Excel
     song_final.to_excel(output_path, index=False)
+    style_excel_file(output_path)
     print(f"Yearly song report exported successfully to: {output_path}")
     return song_final
 

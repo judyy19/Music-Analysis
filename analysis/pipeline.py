@@ -6,7 +6,7 @@ import glob
 import re
 import pandas as pd
 from typing import List
-from config import BASE_PATH, STANDARD_SCHEMA, PLATFORM_MAP, EXCLUDE_FILE_NAME, ARTIST_ALIAS_MAP
+from config import BASE_PATH, STANDARD_SCHEMA, PLATFORM_MAP, EXCLUDE_FILE_NAME, ARTIST_ALIAS_MAP, SONG_ALIAS_MAP
 from utils import read_excel_auto_schema, clean_upc
 
 def get_file_list(base_path: str = BASE_PATH) -> List[str]:
@@ -179,6 +179,36 @@ def standardize_artist_string(artist_val) -> str:
         return 'UNKNOWNARTIST'
     return ', '.join(unique_parts)
 
+
+def standardize_song_string(song_val) -> str:
+    # Handle numeric/null values
+    if isinstance(song_val, (int, float)) and not pd.isna(song_val):
+        if float(song_val).is_integer():
+            song_str = str(int(song_val))
+        else:
+            song_str = str(song_val)
+    elif pd.isna(song_val):
+        return 'UNKNOWNSONG'
+    else:
+        song_str = str(song_val).strip()
+
+    if not song_str or song_str.lower() == 'nan':
+        return 'UNKNOWNSONG'
+
+    # Case-insensitive & space-insensitive matching against SONG_ALIAS_MAP
+    lookup_key = song_str.replace(' ', '').upper()
+    for std_name, alias_list in SONG_ALIAS_MAP.items():
+        std_clean = std_name.replace(' ', '').upper()
+        if lookup_key == std_clean:
+            return std_name
+        if isinstance(alias_list, str):
+            alias_list = [alias_list]
+        cleaned_aliases = [a.replace(' ', '').upper() for a in alias_list]
+        if lookup_key in cleaned_aliases:
+            return std_name
+            
+    return song_str
+
 def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
     """Apply cleaning rules: clean dates, map platform, standardize song/artist metadata."""
     if df.empty:
@@ -203,11 +233,12 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
             lambda x: str(int(x)) if isinstance(x, (int, float)) and not pd.isna(x) and float(x).is_integer()
                       else (str(x).strip() if pd.notna(x) else '')
         )
+        df_cleaned['standard_song'] = df_cleaned['Song'].apply(standardize_song_string)
         
         
     # 3. Standardize Song and Artist (Resolve multiple names per ISRC / UPC)
     # Standardize Song Names (first occurrence per ISRC)
-    df_cleaned['standard_song'] = df_cleaned['Song'].astype(str)
+    
     # if 'ISRC' in df_cleaned.columns and 'Song' in df_cleaned.columns:
     #     standard_songs = df_cleaned.groupby('ISRC')['Song'].agg('first')
     #     df_cleaned['standard_song'] = df_cleaned['ISRC'].map(standard_songs).fillna(df_cleaned['Song'])
@@ -234,7 +265,10 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
         artist_cleaned = df_cleaned['standard_artist'].fillna('UNKNOWNARTIST').astype(str).str.replace(r'\s+', '', regex=True).str.upper()
         isrc_fill = song_cleaned + " - " + artist_cleaned
         # Strip leading/trailing whitespaces from existing ISRCs
-        df_cleaned['ISRC'] = df_cleaned['ISRC'].str.strip()
+        df_cleaned['ISRC'] = df_cleaned['ISRC'].apply(
+            lambda x: str(int(x)) if isinstance(x, (int, float)) and not pd.isna(x) and float(x).is_integer()
+                      else (str(x).strip() if pd.notna(x) else x)
+        )
         df_cleaned['ISRC'] = df_cleaned['ISRC'].fillna(isrc_fill)
         df_cleaned.loc[df_cleaned['ISRC'].astype(str).str.strip() == '', 'ISRC'] = isrc_fill
 
@@ -246,7 +280,7 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
 
     # Capitalize all the letters of ISRC
     if 'ISRC' in df_cleaned.columns:
-        df_cleaned['ISRC'] = df_cleaned['ISRC'].str.upper()
+        df_cleaned['ISRC'] = df_cleaned['ISRC'].apply(lambda x: str(x).upper() if pd.notna(x) else x)
         
     if 'YearMonth' in df_cleaned.columns:
         df_cleaned.sort_values('YearMonth', inplace=True)

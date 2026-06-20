@@ -5,10 +5,21 @@ import os
 
 # Base paths
 # BASE_PATH = "/Users/chu-chun/Mirror/Eva/test/"
-BASE_PATH = "/Users/chu-chun/Mirror/Eva/input/sony_TME/大曲庫/"
-OUTPUT_SONG_REPORT_PATH = "../output/TME_Song_Report_for_Sony_大曲庫.xlsx"
-OUTPUT_SONG_REPORT_PATH_MONTHLY = "../output/TME_Song_Report_Monthly_for_Sony_test.xlsx"
-OUTPUT_ALBUM_REPORT_PATH = "../output/TME_Album_Revenue_Report_for_Sony.xlsx"
+
+# company = "大曲庫"
+# BASE_PATH = f"/Users/chu-chun/Mirror/Eva/input/sony_TME/{company}/"
+# OUTPUT_SONG_REPORT_PATH = f"../output/TME_Song_Report_for_Sony_{company}.xlsx"
+# OUTPUT_SONG_REPORT_PATH_MONTHLY = f"../output/TME_Song_Report_Monthly_for_Sony_{company}.xlsx"
+# OUTPUT_ALBUM_REPORT_PATH = f"../output/TME_Album_Revenue_Report_for_Sony_{company}.xlsx"
+
+# Base paths for Forward
+company = "Forward"
+BASE_PATH = f"/Users/chu-chun/Mirror/Eva/input/TME/"
+OUTPUT_SONG_REPORT_PATH = f"../output/FORWARD/TME_Song_Report_{company}.xlsx"
+OUTPUT_SONG_REPORT_PATH_MONTHLY = f"../output/FORWARD/TME_Song_Report_Monthly_{company}.xlsx"
+OUTPUT_ALBUM_REPORT_PATH = f"../output/FORWARD/TME_Album_Revenue_Report_{company}.xlsx"
+OUTPUT_ALL_REPORT_PATH = f"../output/FORWARD/TME_Report_{company}.xlsx"
+OUTPUT_CHART_PATH = "../output/FORWARD/"
 
 
 # Exclude file name
@@ -98,5 +109,11 @@ ARTIST_ALIAS_MAP = {
     'SHILAAMZAH,五洲唱响乐团': ['SHILAAMZAH,五洲唱响乐团', '茜拉(SHILAAMZAH),五洲唱响乐团', 'SHILAAMZAH,平安', 'SHILAAMZAH', '茜拉(SHILAAMZAH)', '茜拉(SHILAAMZAH),平安', '五洲唱响乐团, 茜拉 (Shila Amzah)'],
     '方泂鑌': ['方烱彬', '方泂鑌', '方炯鑌'],
     'R&b' : ['R&b', 'R & B']
+}
+
+SONG_ALIAS_MAP = {
+    '我祇有期待': ['我祇有期待', '我只有期待'],
+    '祇对着一个影': ['祇对着一个影', '只对着一个影'],
+    '男儿着眼天地开': ['男儿着眼天地开', '男儿着眼天地间'],
 }
 
