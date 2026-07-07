@@ -59,11 +59,12 @@ def style_excel_file(file_path: str):
         col_types = {}
         for col_idx in range(1, max_col + 1):
             col_name = str(ws.cell(row=1, column=col_idx).value or '').lower()
-            if 'revenue' in col_name or '分成' in col_name or 'income' in col_name:
+            is_date_col = len(col_name) == 7 and col_name[4] == '-' and col_name[:4].isdigit() and col_name[5:].isdigit()
+            if 'revenue' in col_name or '分成' in col_name or 'income' in col_name or 'royalty' in col_name or 'fee' in col_name or is_date_col:
                 col_types[col_idx] = 'currency'
             elif 'click' in col_name or '次數' in col_name or 'count' in col_name:
                 col_types[col_idx] = 'clicks'
-            elif 'share' in col_name or 'growth' in col_name or '成長' in col_name or '比例' in col_name:
+            elif 'share' in col_name or 'growth' in col_name or '成長' in col_name or '比例' in col_name or 'percentage' in col_name:
                 col_types[col_idx] = 'percentage'
             elif any(x in col_name for x in ['isrc', 'upc', 'date', 'year', 'month', '日期', '期間']):
                 col_types[col_idx] = 'code'
