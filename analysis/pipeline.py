@@ -112,6 +112,8 @@ def run_etl_pipeline(base_path: str = BASE_PATH) -> pd.DataFrame:
         else:
             print(f"Skipping file {file} due to read error.")
             
+    # Filter out empty DataFrames to prevent FutureWarning during concatenation
+    all_data = [df for df in all_data if not df.empty]
     if not all_data:
         return pd.DataFrame()
         
