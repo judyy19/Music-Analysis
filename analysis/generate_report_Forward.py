@@ -33,7 +33,10 @@ logger.info(f"Raw data successfully loaded. Total rows: {len(df_raw)}")
 # 2. Clean Data
 logger.info("Cleaning dates, standardizing metadata, and unifying platform names...")
 df_cleaned = clean_and_unify_data(df_raw)
-logger.info(f"Data cleaning completed. Total cleaned rows: {len(df_cleaned)}")
+# Exclude Taiwan songs (ISRC starting with 'TW') and drop empty UPC
+df_cleaned = df_cleaned[~df_cleaned['ISRC'].str.startswith('TW', na=False)]
+df_cleaned = df_cleaned[df_cleaned['UPC'].notna()]
+logger.info(f"Data cleaning completed. Exclude 'TW' songs and empty UPC. Total cleaned rows: {len(df_cleaned)}")
 
 # 3. Filter Data
 logger.info(f"Filtering dataset for target analysis period: {START_MONTH} to {END_MONTH}...")
