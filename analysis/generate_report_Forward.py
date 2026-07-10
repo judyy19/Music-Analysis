@@ -1,14 +1,19 @@
+import os
 import pandas as pd
 import logging
+
+# Set working directory to this script's directory for robust relative path resolution
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # Opt-in to future downcasting behavior to silence FutureWarning
 pd.set_option('future.no_silent_downcasting', True)
 
 from config import (
     BASE_PATH, 
-    OUTPUT_SONG_REPORT_PATH_MONTHLY
+    OUTPUT_SONG_REPORT_PATH_MONTHLY,
+    DB_PATH
 )
-from pipeline import run_etl_pipeline, clean_and_unify_data
+from pipeline import sync_to_sqlite, clean_and_unify_data
 from reporting import generate_song_report
 
 # Configure professional logging
@@ -22,12 +27,13 @@ logger = logging.getLogger("ReportGenerator")
 START_MONTH = "2023-01"
 END_MONTH = "2026-06"
 
-# 1. Load Data
-logger.info(f"Starting pipeline. Ingesting raw Excel files from: {BASE_PATH}")
-df_raw = run_etl_pipeline(BASE_PATH)
+# 1. Load Data (Using SQLite Cache)
+logger.info(f"Starting pipeline. Ingesting and syncing raw Excel files to SQLite DB from: {BASE_PATH}")
+df_raw = sync_to_sqlite(BASE_PATH, DB_PATH)
 if df_raw.empty:
     logger.error("Raw dataset is empty. Please verify BASE_PATH contains TME excel files.")
     exit(1)
+
 logger.info(f"Raw data successfully loaded. Total rows: {len(df_raw)}")
 
 # 2. Clean Data
@@ -60,5 +66,6 @@ else:
 
 # 4. Generate Report
 logger.info(f"Generating monthly pivoted song report...")
+os.makedirs(os.path.dirname(os.path.abspath(OUTPUT_SONG_REPORT_PATH_MONTHLY)), exist_ok=True)
 song_final = generate_song_report(df_filtered, OUTPUT_SONG_REPORT_PATH_MONTHLY)
 logger.info(f"Report generated in: {OUTPUT_SONG_REPORT_PATH_MONTHLY}")

@@ -20,6 +20,8 @@ OUTPUT_SONG_REPORT_PATH_MONTHLY = f"../output/FORWARD/TME_Song_Report_Monthly_{c
 OUTPUT_ALBUM_REPORT_PATH = f"../output/FORWARD/TME_Album_Revenue_Report_{company}.xlsx"
 OUTPUT_ALL_REPORT_PATH = f"../output/FORWARD/TME_Report_{company}.xlsx"
 OUTPUT_CHART_PATH = "../output/FORWARD/"
+DB_PATH = "../output/tme_cache.db"
+
 
 
 # Exclude file name

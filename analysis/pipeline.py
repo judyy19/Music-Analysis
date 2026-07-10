@@ -5,6 +5,8 @@ import os
 import glob
 import re
 import pandas as pd
+import sqlite3
+
 from typing import List
 from config import BASE_PATH, STANDARD_SCHEMA, PLATFORM_MAP, EXCLUDE_FILE_NAME, ARTIST_ALIAS_MAP, SONG_ALIAS_MAP
 from utils import read_excel_auto_schema, clean_upc
@@ -288,3 +290,106 @@ def clean_and_unify_data(df: pd.DataFrame) -> pd.DataFrame:
         df_cleaned.sort_values('YearMonth', inplace=True)
         
     return df_cleaned
+
+def sync_to_sqlite(base_path: str = BASE_PATH, db_path: str = None) -> pd.DataFrame:
+    """
+    Synchronize raw Excel records to an SQLite database cache.
+    Reads only new or modified files, then returns the full raw DataFrame from SQLite.
+    """
+    if db_path is None:
+        from config import DB_PATH
+        db_path = DB_PATH
+
+    os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Create processed_files table if not exists
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS processed_files (
+            filepath TEXT PRIMARY KEY,
+            last_modified REAL,
+            row_count INTEGER
+        )
+    """)
+    conn.commit()
+
+    # Get processed files and metadata
+    cursor.execute("SELECT filepath, last_modified FROM processed_files")
+    processed_map = {row[0]: row[1] for row in cursor.fetchall()}
+
+    # Get list of all physical raw files
+    file_list = get_file_list(base_path)
+    
+    # Clean up records for deleted physical files
+    physical_abs_paths = {os.path.abspath(f) for f in file_list}
+    deleted_files = [path for path in processed_map if path not in physical_abs_paths]
+    if deleted_files:
+        print(f"🗑️ SQLite Cleanup: Found {len(deleted_files)} deleted Excel files. Removing from database...")
+        for path in deleted_files:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='raw_records'")
+            if cursor.fetchone():
+                cursor.execute("DELETE FROM raw_records WHERE db_file_path = ?", (path,))
+            cursor.execute("DELETE FROM processed_files WHERE filepath = ?", (path,))
+            conn.commit()
+            print(f"   [Deleted Cache] {os.path.basename(path)}")
+
+    new_or_modified_files = []
+    for f in file_list:
+        abs_path = os.path.abspath(f)
+        mtime = os.path.getmtime(abs_path)
+        if abs_path not in processed_map or processed_map[abs_path] != mtime:
+            new_or_modified_files.append((abs_path, mtime))
+
+    if new_or_modified_files:
+        print(f"🔄 SQLite Ingestion: Found {len(new_or_modified_files)} new/modified Excel files to process.")
+        for abs_path, mtime in new_or_modified_files:
+            filename = os.path.basename(abs_path)
+            # Read Excel
+            temp_df = read_excel_auto_schema(abs_path, STANDARD_SCHEMA)
+            if temp_df is not None:
+                # Clean UPC
+                if 'UPC' in temp_df.columns:
+                    temp_df['UPC'] = temp_df['UPC'].apply(clean_upc)
+                
+                # Resolve column mapping conflict
+                filename_lower = filename.lower()
+                if (filename_lower.startswith('song') or filename_lower.startswith('歌曲')) and 'Aiting_Free' in temp_df.columns:
+                    temp_df = temp_df.rename(columns={'Aiting_Free': 'Song_Free_Normal'})
+
+                # Calculate clicks
+                temp_df = calculate_clicks(temp_df, filename)
+                temp_df['source_file'] = filename
+                temp_df['db_file_path'] = abs_path
+                
+                # Delete existing records from raw_records if file already existed
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='raw_records'")
+                if cursor.fetchone():
+                    cursor.execute("DELETE FROM raw_records WHERE db_file_path = ?", (abs_path,))
+                    conn.commit()
+
+                # Save raw records to SQLite
+                temp_df.to_sql('raw_records', conn, if_exists='append', index=False)
+                
+                # Update processed_files
+                cursor.execute(
+                    "INSERT OR REPLACE INTO processed_files (filepath, last_modified, row_count) VALUES (?, ?, ?)",
+                    (abs_path, mtime, len(temp_df))
+                )
+                conn.commit()
+                print(f"   [Imported] {filename} ({len(temp_df)} rows)")
+            else:
+                print(f"Skipping file {abs_path} due to read error.")
+
+    # Check if raw_records table has been created/populated
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='raw_records'")
+    if not cursor.fetchone():
+        print("❌ SQLite Cache is empty and no raw records are cached yet.")
+        conn.close()
+        return pd.DataFrame()
+
+    # Load all raw records from SQLite
+    df_raw = pd.read_sql_query("SELECT * FROM raw_records", conn)
+    conn.close()
+    return df_raw
+

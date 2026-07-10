@@ -25,6 +25,10 @@ Thumbs.db
 *.zip
 *.rar
 
+# SQLite database files
+*.db
+
+
 
 
 
