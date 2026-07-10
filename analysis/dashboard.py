@@ -47,6 +47,10 @@ SONG_REPORT_PATH = "../output/FORWARD/TME_Song_Report_Monthly_Forward.xlsx"
 
 # Helper function to style Excel output for download
 def style_excel_buffer(df):
+    """
+    Format and style the DataFrame as a styled Excel sheet in bytes.
+    Applies custom fonts, header fills, zebra-striping, borders, and number formatting.
+    """
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Royalty_Report')
@@ -142,6 +146,10 @@ def style_excel_buffer(df):
 
 @st.cache_data
 def load_base_data():
+    """
+    Load base Excel files for royalty rates and song reports.
+    Cached using Streamlit cache to prevent redundant disk reads.
+    """
     if not os.path.exists(ROYALTY_RATE_PATH) or not os.path.exists(SONG_REPORT_PATH):
         return None, None
     df_rates = pd.read_excel(ROYALTY_RATE_PATH)
@@ -149,6 +157,10 @@ def load_base_data():
     return df_rates, df_report
 
 def main():
+    """
+    Main application entry point. Displays interactive filters, KPI metrics,
+    trend charts, detailed data tables, and download options.
+    """
     st.title("TME Music Royalty Dashboard")
     st.markdown("---")
     
