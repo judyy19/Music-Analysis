@@ -1,0 +1,26 @@
+# Exclude git repository metadata
+.git
+.gitignore
+
+# Exclude local database and IDE configuration directories
+database.db
+.agents
+.gemini
+
+# Exclude python compilation artifacts and caches
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Exclude local inputs and outputs (these should be mounted dynamically at runtime)
+input/
+output/
+output_report/
+
+# Exclude macOS files
+.DS_Store

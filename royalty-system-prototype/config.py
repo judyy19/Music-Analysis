@@ -8,19 +8,59 @@ import os
 # Base directory of this project
 PROTOTYPE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Helper functions to resolve paths dynamically with fallbacks
+def resolve_db_path() -> str:
+    env_val = os.getenv("DATABASE_PATH")
+    if env_val:
+        return os.path.abspath(env_val)
+    return os.path.join(PROTOTYPE_DIR, "database.db")
+
+def resolve_input_dir() -> str:
+    env_val = os.getenv("INPUT_DIR")
+    if env_val:
+        return os.path.abspath(env_val)
+    # Check parent folder input/TME (local dev compatibility)
+    parent_input = os.path.join(os.path.dirname(PROTOTYPE_DIR), "input", "TME")
+    if os.path.exists(parent_input):
+        return parent_input
+    # Fallback to local project input/TME
+    return os.path.join(PROTOTYPE_DIR, "input", "TME")
+
+def resolve_rate_path() -> str:
+    env_val = os.getenv("RATE_FILE_PATH")
+    if env_val:
+        return os.path.abspath(env_val)
+    # Check parent folder input/Royalty_Fee_Rate.xlsx
+    parent_rate = os.path.join(os.path.dirname(PROTOTYPE_DIR), "input", "Royalty_Fee_Rate.xlsx")
+    if os.path.exists(parent_rate):
+        return parent_rate
+    # Fallback to local project input/Royalty_Fee_Rate.xlsx
+    return os.path.join(PROTOTYPE_DIR, "input", "Royalty_Fee_Rate.xlsx")
+
+def resolve_output_dir() -> str:
+    env_val = os.getenv("OUTPUT_DIR")
+    if env_val:
+        return os.path.abspath(env_val)
+    # Check parent folder output/Royalty
+    parent_output = os.path.join(os.path.dirname(PROTOTYPE_DIR), "output", "Royalty")
+    if os.path.exists(os.path.dirname(parent_output)):
+        return parent_output
+    # Fallback to local project output/Royalty
+    return os.path.join(PROTOTYPE_DIR, "output", "Royalty")
+
 # Database path
-DB_PATH = os.path.join(PROTOTYPE_DIR, "database.db")
+DB_PATH = resolve_db_path()
 
 # Input file configurations
-# Default directory containing raw music platform files (TME Excel sheets)
-RAW_DATA_DIR = "/Users/chu-chun/Mirror/Eva/input/TME"
+# Default directory containing raw music platform files
+RAW_DATA_DIR = resolve_input_dir()
 
 # Default path for the royalty share/rate Excel sheet
-ROYALTY_RATE_PATH = "/Users/chu-chun/Mirror/Eva/input/Royalty_Fee_Rate.xlsx"
+ROYALTY_RATE_PATH = resolve_rate_path()
 
 # Output configurations
 # Directory to export reports, including errors and formatted royalty statements
-OUTPUT_DIR = "/Users/chu-chun/Mirror/Eva/output/Royalty"
+OUTPUT_DIR = resolve_output_dir()
 ERROR_REPORT_PATH = os.path.join(OUTPUT_DIR, "有誤資料報告.csv")
 
 # File name patterns to exclude during the ETL scan

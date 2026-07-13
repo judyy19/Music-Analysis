@@ -36,6 +36,10 @@ def init_catalog_tables(conn: sqlite3.Connection):
             PRIMARY KEY (isrc, right_holder)
         )
     """)
+    
+    # Index on right_holder to speed up dropdown populating and statements querying
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_catalog_splits_holder ON catalog_splits(right_holder)")
+    
     conn.commit()
 
 def import_catalog_from_excel(conn: sqlite3.Connection, excel_path: str):

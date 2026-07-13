@@ -64,6 +64,11 @@ def init_etl_tables(conn: sqlite3.Connection):
         )
     """)
     
+    # Create indexes for etl_records to significantly speed up filtering and aggregation
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_etl_records_ym_song ON etl_records(year_month, song)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_etl_records_isrc ON etl_records(isrc)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_etl_records_song ON etl_records(song)")
+    
     conn.commit()
 
 def get_file_list(base_path: str) -> List[str]:
@@ -349,16 +354,6 @@ def run_etl_pipeline(conn: sqlite3.Connection, input_dir: str) -> dict:
     # Get all physical raw files
     file_list = get_file_list(input_dir)
     
-    # Cleanup database records if their physical files were deleted
-    physical_abs_paths = {os.path.abspath(f) for f in file_list}
-    deleted_files = [path for path in processed_map if path not in physical_abs_paths]
-    if deleted_files:
-        for path in deleted_files:
-            cursor.execute("DELETE FROM etl_records WHERE source_file = ?", (os.path.basename(path),))
-            cursor.execute("DELETE FROM etl_errors WHERE source_file = ?", (os.path.basename(path),))
-            cursor.execute("DELETE FROM processed_files WHERE filepath = ?", (path,))
-        conn.commit()
-        
     new_or_modified_files = []
     for f in file_list:
         abs_path = os.path.abspath(f)

@@ -61,9 +61,27 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+LOCAL_DB_PATH = None
+
 def get_db_connection():
-    """Establish a connection to the SQLite database."""
-    return sqlite3.connect(config.DB_PATH)
+    """Establish a connection to the SQLite database, using a local copy if in cloud storage."""
+    global LOCAL_DB_PATH
+    if LOCAL_DB_PATH is None:
+        if config.DB_PATH.startswith("/data/"):
+            LOCAL_DB_PATH = "/tmp/database.db"
+            if os.path.exists(config.DB_PATH):
+                import shutil
+                try:
+                    shutil.copy2(config.DB_PATH, LOCAL_DB_PATH)
+                except Exception as e:
+                    st.warning(f"Failed to copy GCS database to local scratch: {e}")
+                    LOCAL_DB_PATH = config.DB_PATH
+            else:
+                pass
+        else:
+            LOCAL_DB_PATH = config.DB_PATH
+            
+    return sqlite3.connect(LOCAL_DB_PATH)
 
 def style_excel_buffer(df: pd.DataFrame) -> bytes:
     """
@@ -176,38 +194,7 @@ def main():
     
     conn = get_db_connection()
     
-    # 1. Sidebar Panel
-    st.sidebar.subheader("ETL Operations")
-    
-    # Trigger ETL Pipeline Button
-    if st.sidebar.button("Trigger ETL Pipeline", use_container_width=True):
-        with st.spinner("Executing ETL Pipeline..."):
-            summary = run_etl_pipeline(conn, config.RAW_DATA_DIR)
-            st.sidebar.success(
-                f"ETL Done!\n"
-                f"- Files: {summary['files_processed']}\n"
-                f"- Records added: {summary['records_added']}\n"
-                f"- Skipped: {summary['records_skipped_duplicate']}\n"
-                f"- Errors logged: {summary['errors_logged']}"
-            )
-            
-    # Export Error CSV Button
-    err_count = get_error_count(conn)
-    st.sidebar.markdown(f"Logged Errors: **{err_count}**")
-    if err_count > 0:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, source_file, error_reason FROM etl_errors")
-        df_errors = pd.DataFrame(cursor.fetchall(), columns=["Error ID", "Source File", "Reason"])
-        
-        st.sidebar.download_button(
-            label="Download Error Report (CSV)",
-            data=df_errors.to_csv(index=False).encode('utf-8-sig'),
-            file_name="有誤資料報告.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
-        
-    st.sidebar.markdown("---")
+    # 1. Sidebar Panel - Data Filters First
     st.sidebar.subheader("Data Filters")
     
     # Fetch lists for dropdowns
@@ -243,13 +230,120 @@ def main():
     if "2024-01" in months:
         default_start_idx = months.index("2024-01")
         
-    start_month = st.sidebar.selectbox("Start Month:", months, index=default_start_idx)
-    end_month = st.sidebar.selectbox("End Month:", months, index=len(months)-1)
+    date_cols = st.sidebar.columns(2)
+    with date_cols[0]:
+        start_month = st.selectbox("Start Month:", months, index=default_start_idx)
+    with date_cols[1]:
+        end_month = st.selectbox("End Month:", months, index=len(months)-1)
     
     if start_month > end_month:
         st.sidebar.error("Error: Start Month cannot be later than End Month!")
         conn.close()
         return
+
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("ETL Operations")
+    
+    if "uploader_key" not in st.session_state:
+        st.session_state["uploader_key"] = 0
+
+    # File Uploader for End Users to upload spreadsheets directly to GCS
+    uploaded_files = st.sidebar.file_uploader(
+        "Upload raw Excel reports or ZIP", 
+        type=["xlsx", "xls", "zip"], 
+        accept_multiple_files=True,
+        key=f"file_uploader_{st.session_state['uploader_key']}"
+    )
+    if uploaded_files:
+        import zipfile
+        success_count = 0
+        errors = []
+        for uploaded_file in uploaded_files:
+            if uploaded_file.name.lower().endswith(".zip"):
+                try:
+                    zip_folder_name = os.path.splitext(uploaded_file.name)[0]
+                    zip_target_dir = os.path.join(config.RAW_DATA_DIR, zip_folder_name)
+                    os.makedirs(zip_target_dir, exist_ok=True)
+                    with zipfile.ZipFile(io.BytesIO(uploaded_file.read())) as z:
+                        for member in z.namelist():
+                            filename = os.path.basename(member)
+                            # Skip directories and macOS hidden files
+                            if not filename or filename.startswith("._") or "__MACOSX" in member:
+                                continue
+                            if filename.lower().endswith((".xlsx", ".xls")):
+                                target_path = os.path.join(zip_target_dir, filename)
+                                try:
+                                    with open(target_path, "wb") as f:
+                                        f.write(z.read(member))
+                                    success_count += 1
+                                except Exception as inner_e:
+                                    errors.append(f"Failed to extract {filename} from ZIP: {inner_e}")
+                except Exception as e:
+                    errors.append(f"Failed to open ZIP archive {uploaded_file.name}: {e}")
+            else:
+                target_path = os.path.join(config.RAW_DATA_DIR, uploaded_file.name)
+                try:
+                    with open(target_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                    success_count += 1
+                except Exception as e:
+                    errors.append(f"Failed to save file {uploaded_file.name}: {e}")
+                    
+        if success_count > 0:
+            st.sidebar.success(f"Successfully processed {success_count} file(s)!")
+        if errors:
+            for err in errors:
+                st.sidebar.error(err)
+                
+
+    # Display ETL Success message if it was recently run
+    if "etl_summary" in st.session_state:
+        summary = st.session_state["etl_summary"]
+        st.sidebar.success(
+            f"ETL Done!\n"
+            f"- Files: {summary['files_processed']}\n"
+            f"- Records added: {summary['records_added']}\n"
+            f"- Skipped: {summary['records_skipped_duplicate']}\n"
+            f"- Errors logged: {summary['errors_logged']}"
+        )
+        del st.session_state["etl_summary"]
+
+    # Trigger ETL Pipeline Button
+    if st.sidebar.button("Analyze Data", use_container_width=True):
+        with st.spinner("Executing ETL Pipeline..."):
+            summary = run_etl_pipeline(conn, config.RAW_DATA_DIR)
+            # Sync local copy back to GCS bucket to persist updates
+            if LOCAL_DB_PATH == "/tmp/database.db" and config.DB_PATH.startswith("/data/"):
+                import shutil
+                try:
+                    shutil.copy2(LOCAL_DB_PATH, config.DB_PATH)
+                except Exception as e:
+                    st.sidebar.error(f"Failed to save changes back to cloud storage: {e}")
+            st.session_state["etl_summary"] = summary
+            st.session_state["uploader_key"] += 1
+            st.rerun()    
+
+            
+    # Export Error CSV Button
+    err_count = get_error_count(conn)
+    st.sidebar.markdown(f"Logged Errors: **{err_count}**")
+    if err_count > 0:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT source_file, error_reason, COUNT(*) as error_count 
+            FROM etl_errors 
+            GROUP BY source_file, error_reason
+            ORDER BY source_file ASC, error_count DESC
+        """)
+        df_errors = pd.DataFrame(cursor.fetchall(), columns=["Source File", "Reason", "Error Count"])
+        
+        st.sidebar.download_button(
+            label="Download Error Report (CSV)",
+            data=df_errors.to_csv(index=False).encode('utf-8-sig'),
+            file_name="Error_Report.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
 
     # 2. Query Statistics & KPI Cards
     if selected_holder == "All":
@@ -543,7 +637,7 @@ def main():
         st.download_button(
             label="Download Excel Report",
             data=excel_data,
-            file_name=f"Royalty_Report_{selected_holder.replace(' ', '_')}_{start_month}_{end_month}.xlsx",
+            file_name=f"Report_{selected_holder.replace(' ', '_')}_{start_month}_{end_month}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             key="download_btn"
         )

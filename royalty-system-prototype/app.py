@@ -72,7 +72,14 @@ def launch_portal():
     dashboard_path = os.path.join(config.PROTOTYPE_DIR, "portal", "dashboard_logic.py")
     
     try:
-        subprocess.run(["streamlit", "run", dashboard_path], check=True)
+        subprocess.run([
+            "streamlit", "run", dashboard_path,
+            "--server.port=8501",
+            "--server.address=0.0.0.0",
+            "--server.enableCORS=false",
+            "--server.enableXsrfProtection=false",
+            "--server.maxUploadSize=200"
+        ], check=True)
     except KeyboardInterrupt:
         print("\nPortal stopped.")
     except Exception as e:
