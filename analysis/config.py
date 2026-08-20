@@ -31,6 +31,7 @@ EXCLUDE_FILE_NAME = ['bill', '~$', '保底金明细', '数专', '音乐汇总单
 # START_MONTH = "2024-01"
 # END_MONTH = "2026-03"
 TOP_N_SONGS = 10
+TOP_N_SONGS_UNIQUE_ISRC = 30
 TOP_N_ALBUMS = 10
 
 # Schema definition for columns mapping (ETL mapping)

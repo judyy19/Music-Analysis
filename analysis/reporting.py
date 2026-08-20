@@ -60,12 +60,12 @@ def style_excel_file(file_path: str):
         for col_idx in range(1, max_col + 1):
             col_name = str(ws.cell(row=1, column=col_idx).value or '').lower()
             is_date_col = len(col_name) == 7 and col_name[4] == '-' and col_name[:4].isdigit() and col_name[5:].isdigit()
-            if 'revenue' in col_name or '分成' in col_name or 'income' in col_name or 'royalty' in col_name or 'fee' in col_name or is_date_col:
+            if col_name.endswith('revenue') or '分成' in col_name or 'income' in col_name or 'royalty' in col_name or 'fee' in col_name or is_date_col:
                 col_types[col_idx] = 'currency'
+            elif col_name.endswith('share') or 'growth' in col_name or '成長' in col_name or '比例' in col_name or 'percentage' in col_name:
+                col_types[col_idx] = 'percentage'    
             elif 'click' in col_name or '次數' in col_name or 'count' in col_name:
                 col_types[col_idx] = 'clicks'
-            elif 'share' in col_name or 'growth' in col_name or '成長' in col_name or '比例' in col_name or 'percentage' in col_name:
-                col_types[col_idx] = 'percentage'
             elif any(x in col_name for x in ['isrc', 'upc', 'date', 'year', 'month', '日期', '期間']):
                 col_types[col_idx] = 'code'
             else:
@@ -88,16 +88,18 @@ def style_excel_file(file_path: str):
                 
                 if isinstance(val, (int, float)):
                     if c_type == 'currency':
-                        cell.number_format = '#,##0.00'
+                        cell.number_format = '$#,##0.00'
                         cell.alignment = align_right
                     elif c_type == 'clicks':
                         cell.number_format = '#,##0'
                         cell.alignment = align_right
                     elif c_type == 'percentage':
-                        if val > 1.0 or val < -1.0:
-                            cell.number_format = '0.00"%"'
-                        else:
-                            cell.number_format = '0.00%'
+                        # if val > 1.0 or val < -1.0:
+                        #     cell.number_format = '0.00"%"'
+                        # else:
+                        #     cell.number_format = '0.00%'
+                        cell.number_format = '0.00%'
+
                         cell.alignment = align_right
                     else:
                         cell.number_format = '#,##0'
